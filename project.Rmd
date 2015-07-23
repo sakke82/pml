@@ -1,0 +1,67 @@
+---
+title: "Practical Machine Learning project"
+author: "Sakari Hakala"
+date: "Sunday, July 19, 2015"
+output: html_document
+---
+
+This is project for a Coursera Practical Machine Learning course. We are using data from [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har), and in particular Weight Lifting Exersize dataset. That dataset is used to predict "how well" participants did their exersice. For more details go to website.  
+
+### Data manipulation
+
+
+
+```{r, warning=FALSE, message=FALSE}
+library(caret)
+```
+We load our data to train and test dataframes with read.csv command, also taking care of "#DIV/0" values and making them as NA's. 
+```{r, echo=FALSE}
+setwd("C:/Users/aino/Desktop/coursera/R files/practical machine learning")
+```
+
+
+
+```{r}
+train <- read.csv("pml-training.csv", na.strings = c(NA, "#DIV/0!"))
+test <- read.csv("pml-testing.csv", na.strings = c(NA, "#DIV/0!"))
+dim(train); dim(test)
+```
+As we can see, our train set has `r dim(train)[1]` observations with `r dim(train)[2]` features, and `r dim(test)[1]` observations to test our final model.
+Our goal is to predict "classe"-variable using all other features.
+
+As I looked the data, I noticed that there was a lots of missing values, and those values was somewhat periodic. I choose first row as a example and found that there was 100 missing values in first row.  
+Next I subset trainset to exclude those features with NA's at first row, and also removed first column "X" because dataset was sorted by "classe"-variable. So we are left with 59 features. I also choose only 10% of training set to make my first models, because of the large number of observations.  
+```{r}
+nas <- sapply(train[1,], is.na) # finding NA's at 1st row
+nas <- unname(nas) # getting rid of colnames
+train60 <- train[,!y] # choosing those cols with not NA's
+train60 <- train60[,-1] # dropping first column
+inTrain <- createDataPartition(train60$classe, p = 0.1, list=FALSE) 
+train60_tt <- train60[inTrain,] # creating 10% sample from cleaned trainset
+train60_nt <- train60[-inTrain,] # rest 90% from cleaned trainset
+```
+Now we have `r dim(train60_tt)[1]` observations and `r dim(train60_tt)[2]` features, and reduced the scale so my laptop can more easily handle it.
+
+### Training the model
+
+I choose to start with Random Forest algorithm, becouse this is classification problem. Also at original study they choose RF. 
+```{r, warning=FALSE, message=FALSE}
+# I have commented next lines out so I don't run train function every time I knit rmd to html.
+#fit <- train(classe ~ ., data = train60_tt, method = 'rf', list=FALSE)
+#saveRDS(fit,"fit.rds") # train data and save fit 
+
+fit <- readRDS("fit.rds") # load fit
+fit
+
+pred <- predict(fit, train60_nt) # test fit to trainset
+acc <- sum(pred == train60_nt$classe) / length(pred) # calculate accuracy
+table(pred, train60_nt$classe)
+```
+This fit gives amezing accuracy, so i thought there was something wrong with model. Maybe model was overfitting to that subset of trainset. Then I tested model with the rest 90% of the trainset, and got `r acc` accuracy. This assured me that I had found good model to predict "classe"- variable.
+
+### Predictions
+Then all I needed was to predict 20 observations in test dataframe. In next R chunk is the code and the results of the predictions. After I had inserted results to grading, I got 20/20, so now I really knew my model did something right.
+```{r}
+testPred <- predict(fit, test)
+testPred
+```
